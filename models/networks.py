@@ -583,12 +583,19 @@ class NLayerDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, True)
         ]
 
-        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+        self.fully_connect_gan1  = [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+        self.fully_connect_rot1 = nn.Linear(ndf * nf_mult, 4)
         self.model = nn.Sequential(*sequence)
+        self.softmax = nn.Softmax()
 
     def forward(self, input):
         """Standard forward."""
-        return self.model(input)
+        conv_out = self.model(input)
+        gan_out = self.fully_connect_gan1(conv_out)
+        
+        rot_logits = self.fully_connect_rot1(conv_out)
+        rot_prob = self.softmax(rot_logits)
+        return gan_out, rot_logits, rot_prob
 
 
 class PixelDiscriminator(nn.Module):
