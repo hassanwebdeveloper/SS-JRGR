@@ -206,12 +206,12 @@ class RainCycleModel(BaseModel):
         self.loss_Cycle = self.Cycle_Os + self.Cycle_Ot + self.Cycle_Bs + self.Cycle_Bt
 
         # GAN Loss        
-        self.GAN_Ot = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Ot, self.pred_Ot), True)        
-        self.GAN_Os = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Os, self.pred_Os), True)
-        self.GAN_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_Bs), True)
-        self.GAN_pred_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bs), True)
-        self.GAN_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B , self.pred_Bt), True)
-        self.GAN_pred_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bt), True)
+        self.GAN_Ot = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Ot, self.pred_Ot), True, None, None, None, None, None, None, None, None, False)        
+        self.GAN_Os = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Os, self.pred_Os), True, None, None, None, None, None, None, None, None, False)
+        self.GAN_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_Bs), True, None, None, None, None, None, None, None, None, False)
+        self.GAN_pred_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bs), True, None, None, None, None, None, None, None, None, False)
+        self.GAN_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B , self.pred_Bt), True, None, None, None, None, None, None, None, None, False)
+        self.GAN_pred_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bt), True, None, None, None, None, None, None, None, None, False)
         self.loss_GAN = self.GAN_Ot + self.GAN_Os + self.GAN_pred_Bs + self.GAN_pred_pred_Bs + self.GAN_pred_Bt + self.GAN_pred_pred_Bt
 
         # MSE Loss
@@ -235,13 +235,15 @@ class RainCycleModel(BaseModel):
         x_270 = x.transpose(2,3).flip(2,3)
         fake = torch.cat((x, x_90, x_180, x_270),0)
         
-        pred_real = netD(real)
-        loss_D_real = self.criterion_GAN(pred_real, True)
+        d_real_pro_logits, d_real_rot_logits, d_real_rot_prob = netD(real)
         # Fake
-        pred_fake = netD(fake.detach())
-        loss_D_fake = self.criterion_GAN(pred_fake, False)
-        # Combined loss and calculate gradients
-        loss_D = (loss_D_real + loss_D_fake) * 0.5
+        d_pred_pro_logits, d_pred_rot_logits, d_pred_rot_prob = netD(fake.detach())
+        
+        loss_D = self.criterion_GAN(d_pred_pro_logits, d_pred_rot_logits, d_pred_rot_prob, False, d_real_pro_logits, d_real_rot_logits, d_real_rot_prob, True, netD, real, fake, self.device, True)
+
+#         loss_D_fake = self.criterion_GAN(pred_fake, False)
+#         # Combined loss and calculate gradients
+#         loss_D = (loss_D_real + loss_D_fake) * 0.5
         return loss_D
 
     def backward_D_Ot(self):
