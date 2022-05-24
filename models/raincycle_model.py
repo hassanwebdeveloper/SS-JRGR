@@ -174,7 +174,16 @@ class RainCycleModel(BaseModel):
         self.pred_pred_Rs = self.pred_Os - self.pred_pred_Bt
         self.pred_pred_Rst = self.netG2(self.pred_pred_Rs)
         self.pred_pred_Ot = self.pred_pred_Bt + self.pred_pred_Rst
-
+    
+    def cal_GAN_loss_G_basic(self, netD, pred_img):
+        x = pred_img
+        x_90 = x.transpose(2,3)
+        x_180 = x.flip(2,3)
+        x_270 = x.transpose(2,3).flip(2,3)
+        pred_img = torch.cat((x, x_90, x_180, x_270),0)
+        
+        return netD(pred_img)        
+    
     def backward_G(self):
         lambda_MSE = self.opt.lambda_MSE
         lambda_GAN = self.opt.lambda_GAN
@@ -196,13 +205,13 @@ class RainCycleModel(BaseModel):
         self.Cycle_Bt = self.criterionCycle(self.pred_Bt, self.pred_pred_Bt)
         self.loss_Cycle = self.Cycle_Os + self.Cycle_Ot + self.Cycle_Bs + self.Cycle_Bt
 
-        # GAN Loss
-        self.GAN_Ot = self.criterion_GAN(self.netD_Ot(self.pred_Ot), True)
-        self.GAN_Os = self.criterion_GAN(self.netD_Os(self.pred_Os), True)
-        self.GAN_pred_Bs = self.criterion_GAN(self.netD_B(self.pred_Bs), True)
-        self.GAN_pred_pred_Bs = self.criterion_GAN(self.netD_B(self.pred_pred_Bs), True)
-        self.GAN_pred_Bt = self.criterion_GAN(self.netD_B(self.pred_Bt), True)
-        self.GAN_pred_pred_Bt = self.criterion_GAN(self.netD_B(self.pred_pred_Bt), True)
+        # GAN Loss        
+        self.GAN_Ot = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Ot, self.pred_Ot), True)        
+        self.GAN_Os = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Os, self.pred_Os), True)
+        self.GAN_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_Bs), True)
+        self.GAN_pred_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bs), True)
+        self.GAN_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B , self.pred_Bt), True)
+        self.GAN_pred_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bt), True)
         self.loss_GAN = self.GAN_Ot + self.GAN_Os + self.GAN_pred_Bs + self.GAN_pred_pred_Bs + self.GAN_pred_Bt + self.GAN_pred_pred_Bt
 
         # MSE Loss
@@ -214,6 +223,18 @@ class RainCycleModel(BaseModel):
         self.loss_G_total.backward()
 
     def cal_GAN_loss_D_basic(self, netD, real, fake):
+        x = real
+        x_90 = x.transpose(2,3)
+        x_180 = x.flip(2,3)
+        x_270 = x.transpose(2,3).flip(2,3)
+        real = torch.cat((x, x_90, x_180, x_270),0)
+        
+        x = fake
+        x_90 = x.transpose(2,3)
+        x_180 = x.flip(2,3)
+        x_270 = x.transpose(2,3).flip(2,3)
+        fake = torch.cat((x, x_90, x_180, x_270),0)
+        
         pred_real = netD(real)
         loss_D_real = self.criterion_GAN(pred_real, True)
         # Fake
