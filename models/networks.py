@@ -6,6 +6,7 @@ from torch.optim import lr_scheduler
 from torch.autograd import Function
 from typing import List, Dict
 import numpy as np
+import torch.nn.functional as F
 
 
 ###############################################################################
@@ -258,7 +259,7 @@ class GANLoss(nn.Module):
             target_tensor = self.fake_label
         return target_tensor.expand_as(prediction)
 
-    def __call__(self, prediction, target_is_real):
+    def __call__(self, d_pred_pro_logits, d_pred_rot_logits, d_pred_rot_prob, target_is_real, d_real_pro_logits, d_real_rot_logits, d_real_rot_prob, real_target_is_real, netD, data, pred_img, device, use_real):
         """Calculate loss given Discriminator's output and grount truth labels.
 
         Parameters:
@@ -270,7 +271,38 @@ class GANLoss(nn.Module):
         """
         if self.gan_mode in ['lsgan', 'vanilla']:
             target_tensor = self.get_target_tensor(prediction, target_is_real)
-            loss = self.loss(prediction, target_tensor)
+            loss = self.loss(d_pred_pro_logits, target_tensor)
+            
+            rot_labels = torch.zeros(4*batch_size).cuda()
+            for i in range(4*batch_size):
+                if i < batch_size:
+                    rot_labels[i] = 0
+                elif i < 2*batch_size:
+                    rot_labels[i] = 1
+                elif i < 3*batch_size:
+                    rot_labels[i] = 2
+                else:
+                    rot_labels[i] = 3
+
+            rot_labels = F.one_hot(rot_labels.to(torch.int64), 4).float()
+            
+            if use_real:
+                target_tensor_real = self.get_target_tensor(d_real_pro_logits, real_target_is_real)
+                loss = loss - self.loss(d_real_pro_logits, target_tensor_real)
+                gradiant_panelty, gradiants = cal_gradient_penalty(netD,data, pred_img, device)
+                loss = loss + gradiant_panelty
+
+                rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
+                            input = d_real_pro_logits,
+                            target = rot_labels))
+                loss += 0.5 + rotaionLoss
+            else:
+                rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
+                            input = d_pred_pro_logits,
+                            target = rot_labels))
+                loss += 1 + rotaionLoss
+            
+            
         elif self.gan_mode == 'wgangp':
             if target_is_real:
                 loss = -prediction.mean()
