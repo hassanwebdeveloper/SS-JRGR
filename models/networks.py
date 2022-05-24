@@ -295,12 +295,12 @@ class GANLoss(nn.Module):
                 rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
                             input = d_real_pro_logits,
                             target = rot_labels))
-                loss += 0.5 + rotaionLoss
+                loss += 0.5 * rotaionLoss
             else:
                 rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
                             input = d_pred_pro_logits,
                             target = rot_labels))
-                loss += 1 + rotaionLoss
+                loss += 1 * rotaionLoss
             
             
         elif self.gan_mode == 'wgangp':
