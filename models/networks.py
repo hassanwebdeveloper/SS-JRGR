@@ -616,7 +616,8 @@ class NLayerDiscriminator(nn.Module):
         ]
 
         self.fully_connect_gan1  = nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)  # output 1 channel prediction map
-        self.fully_connect_rot1 = nn.Linear(492032, 4)
+        self.fully_connect_rot1 = nn.Linear(492032, 240)
+        self.fully_connect_rot2 = nn.Linear(240, 4)
         self.model = nn.Sequential(*sequence)
         self.softmax = nn.Softmax()
 
@@ -626,6 +627,8 @@ class NLayerDiscriminator(nn.Module):
         gan_out = self.fully_connect_gan1(conv_out)
         
         rot_logits = self.fully_connect_rot1(nn.Flatten()(conv_out))
+        rot_logits = self.fully_connect_rot2(rot_logits)
+        
                 
         rot_prob = self.softmax(rot_logits)
         
