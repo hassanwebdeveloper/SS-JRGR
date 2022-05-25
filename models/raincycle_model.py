@@ -205,13 +205,25 @@ class RainCycleModel(BaseModel):
         self.Cycle_Bt = self.criterionCycle(self.pred_Bt, self.pred_pred_Bt)
         self.loss_Cycle = self.Cycle_Os + self.Cycle_Ot + self.Cycle_Bs + self.Cycle_Bt
 
-        # GAN Loss        
-        self.GAN_Ot = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Ot, self.pred_Ot), True, None, None, None, None, None, None, None, None, False)        
-        self.GAN_Os = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_Os, self.pred_Os), True, None, None, None, None, None, None, None, None, False)
-        self.GAN_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_Bs), True, None, None, None, None, None, None, None, None, False)
-        self.GAN_pred_pred_Bs = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bs), True, None, None, None, None, None, None, None, None, False)
-        self.GAN_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B , self.pred_Bt), True, None, None, None, None, None, None, None, None, False)
-        self.GAN_pred_pred_Bt = self.criterion_GAN(cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bt), True, None, None, None, None, None, None, None, None, False)
+        # GAN Loss  
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_Ot, self.pred_Ot)      
+        self.GAN_Ot = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)        
+        
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_Os, self.pred_Os)
+        self.GAN_Os = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)
+        
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_B, self.pred_Bs)
+        self.GAN_pred_Bs = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)
+        
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bs)
+        self.GAN_pred_pred_Bs = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)
+        
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_B , self.pred_Bt)
+        self.GAN_pred_Bt = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)
+        
+        gan_out, rot_logits, rot_prob = self.cal_GAN_loss_G_basic(self.netD_B, self.pred_pred_Bt)
+        self.GAN_pred_pred_Bt = self.criterion_GAN(gan_out, rot_logits, rot_prob, True, None, None, None, None, None, None, None, None, False)
+        
         self.loss_GAN = self.GAN_Ot + self.GAN_Os + self.GAN_pred_Bs + self.GAN_pred_pred_Bs + self.GAN_pred_Bt + self.GAN_pred_pred_Bt
 
         # MSE Loss
