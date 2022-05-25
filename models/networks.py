@@ -270,16 +270,16 @@ class GANLoss(nn.Module):
             the calculated loss.
         """
         if self.gan_mode in ['lsgan', 'vanilla']:
-            target_tensor = self.get_target_tensor(prediction, target_is_real)
+            target_tensor = self.get_target_tensor(d_pred_pro_logits, target_is_real)
             loss = self.loss(d_pred_pro_logits, target_tensor)
             
-            rot_labels = torch.zeros(4*batch_size).cuda()
-            for i in range(4*batch_size):
-                if i < batch_size:
+            rot_labels = torch.zeros(4*1).cuda()
+            for i in range(4*1):
+                if i < 1:
                     rot_labels[i] = 0
-                elif i < 2*batch_size:
+                elif i < 2*1:
                     rot_labels[i] = 1
-                elif i < 3*batch_size:
+                elif i < 3*1:
                     rot_labels[i] = 2
                 else:
                     rot_labels[i] = 3
@@ -293,12 +293,12 @@ class GANLoss(nn.Module):
                 loss = loss + gradiant_panelty
 
                 rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
-                            input = d_real_pro_logits,
+                            input = d_real_rot_logits,
                             target = rot_labels))
                 loss += 0.5 * rotaionLoss
             else:
                 rotaionLoss = torch.sum(F.binary_cross_entropy_with_logits(
-                            input = d_pred_pro_logits,
+                            input = d_pred_rot_logits,
                             target = rot_labels))
                 loss += 1 * rotaionLoss
             
@@ -337,7 +337,7 @@ def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', const
         else:
             raise NotImplementedError('{} not implemented'.format(type))
         interpolatesv.requires_grad_(True)
-        disc_interpolates = netD(interpolatesv)
+        disc_interpolates, rot_logit, rot_prob = netD(interpolatesv)
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolatesv,
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(device),
                                         create_graph=True, retain_graph=True, only_inputs=True)
@@ -615,8 +615,8 @@ class NLayerDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, True)
         ]
 
-        self.fully_connect_gan1  = [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
-        self.fully_connect_rot1 = nn.Linear(ndf * nf_mult, 4)
+        self.fully_connect_gan1  = nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)  # output 1 channel prediction map
+        self.fully_connect_rot1 = nn.Linear(492032, 4)
         self.model = nn.Sequential(*sequence)
         self.softmax = nn.Softmax()
 
@@ -625,8 +625,10 @@ class NLayerDiscriminator(nn.Module):
         conv_out = self.model(input)
         gan_out = self.fully_connect_gan1(conv_out)
         
-        rot_logits = self.fully_connect_rot1(conv_out)
+        rot_logits = self.fully_connect_rot1(nn.Flatten()(conv_out))
+                
         rot_prob = self.softmax(rot_logits)
+        
         return gan_out, rot_logits, rot_prob
 
 
